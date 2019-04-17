@@ -6,5 +6,6 @@ module.exports = function (app) {
 
   
   app.post('/api/connexion/signUp', connexion.signUp);
- 
+  app.post('/api/connexion/signIn', connexion.signIn);
+
 };
