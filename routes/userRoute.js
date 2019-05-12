@@ -7,9 +7,6 @@ const User = require('../models/userModel');
 
 const router = new express.Router();
 
-// Authentication builds on Maximilian Schwarzmüller's guide:
-// https://www.youtube.com/watch?v=0D5EEKH97NA
-
 // Get all users
 router.get('/', async (req, res) => {
   const users = await User.find();
@@ -117,6 +114,19 @@ router.get('/:id', async (req, res) => {
       res.json({ user });
     } else {
       res.status(404).json({ message: 'User not found' });
+    }
+  } catch (err) {
+    res.status(500).json({ err });
+  }
+});
+
+router.get('/listUsers', async (req, res) => {
+  try {
+    const users = await User.find();
+    if (users) {
+      res.json({ users });
+    } else {
+      res.status(404).json({ message: 'Users not found' });
     }
   } catch (err) {
     res.status(500).json({ err });
