@@ -6,7 +6,7 @@ const path = require('path');
 const posts = require('./routes/postRoute');
 const users = require('./routes/userRoute');
 // const dbURI = process.env.REACT_APP_DB_URI || require('./secrets').dbURI;
-const io = require('socket.io');
+const socketio = require('socket.io');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -59,21 +59,30 @@ app.use('/users', users);
 
 const http = require('http').Server(app);
 
-const socket = io(http,{origins: 'http://localhost:3000'});
+const io = socketio(http, { origins: 'http://localhost:3000' });
+var roomno = 1;
 
-socket.on('connection', (socket)=>{
-console.log('user connected');
-socket.on('SEND_MESSAGE', function(data){
-  socket.emit('RECEIVE_MESSAGE', data);
-});
+io.on('connection', (socket) => {
+  console.log('user connected');
+  // console.log(io.sockets)
+  socket.on('msg', function (data) {
+    //Send message to everyone
+    // console.log(data)
+    io.emit('newmsg', data);
+  })
+  if (io.nsps['/'].adapter.rooms["room-" + roomno] && io.nsps['/'].adapter.rooms["room-" + roomno].length > 1) roomno++;
+  socket.join("room-" + roomno);
+
+  //Send this event to everyone in the room.
+  io.sockets.in("room-" + roomno).emit('connectToRoom', "You are in room no. " + roomno);
 });
 
 http.listen(port, () => {
   console.log(`Started up http at port ${port}`);
-  
- });
+
+});
 
 // app.listen(port, () => {
 //  console.log(`Started up at port ${port}`);
- 
+
 // });
