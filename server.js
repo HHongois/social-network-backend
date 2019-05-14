@@ -5,8 +5,8 @@ const mongoose = require('mongoose');
 const path = require('path');
 const posts = require('./routes/postRoute');
 const users = require('./routes/userRoute');
-// const dbURI = process.env.REACT_APP_DB_URI || require('./secrets').dbURI;
 const socketio = require('socket.io');
+const Conversation = require('./models/conversationModel');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -28,20 +28,6 @@ app.use((req, res, next) => {
   }
   return next();
 });
-// app.use((req, res, next) => {
-//   res.header('Access-Control-Allow-Origin', '*');
-//   res.header(
-//     'Access-Control-Allow-Headers',
-//     'Origin, X-Requested-With, Content-Type, Accept, Authorization'
-//   );
-//   if (req.method === 'OPTIONS') {
-//     res.header('Access-Control-Allow-Methods', 'PUT, GET, POST, PATCH, DELETE');
-//     console.log('ici')
-//     return res.status(200).json({});
-//   }
-//   return next();
-// });
-
 
 mongoose
   .connect(
@@ -64,17 +50,50 @@ var roomno = 1;
 
 io.on('connection', (socket) => {
   console.log('user connected');
-  // console.log(io.sockets)
-  socket.on('msg', function (data) {
-    //Send message to everyone
-    // console.log(data)
-    io.emit('newmsg', data);
-  })
-  if (io.nsps['/'].adapter.rooms["room-" + roomno] && io.nsps['/'].adapter.rooms["room-" + roomno].length > 1) roomno++;
-  socket.join("room-" + roomno);
 
-  //Send this event to everyone in the room.
-  io.sockets.in("room-" + roomno).emit('connectToRoom', "You are in room no. " + roomno);
+  socket.on('msg', function (data) {
+    io.sockets.in(data.salonId).emit('newmsg', data);
+  })
+
+  socket.on('conversation', (data)=>{
+    console.log(data)
+    if(data.user1 !== data.user2){
+    try{
+      Conversation.findOne({salon:{$in:[data.user1]} ,salon:{$in:[data.user2]}},async (err,conv)=>{
+        if(err){
+          console.log(err);
+          socket.emit('erreur',err) ;    
+        }else if(conv.length == 0){
+          const tmp = new Conversation({
+            messages:[],
+            salon: [data.user1,data.user2],
+            date: new Date().getTime()
+          });
+            try {
+              const salon  = await tmp.save();
+              socket.join(salon.id);
+              console.log(salon); 
+              socket.emit('addSalon',salon) ;    
+            } catch (err) {
+              console.log(err);
+              socket.emit('erreur',err) ;    
+            }
+        }else if(conv.length > 1){
+          socket.emit('erreur',conv) ;    
+
+        }else{
+          console.log(conv)
+          socket.join(conv.id);
+          socket.emit('addSalon',conv) ;    
+        }
+      });
+
+    }catch(err){
+      console.log(err);
+      socket.emit('erreur',err) ;    
+    }
+  }
+  })
 });
 
 http.listen(port, () => {
