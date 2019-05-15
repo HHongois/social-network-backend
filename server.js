@@ -49,59 +49,72 @@ const io = socketio(http, { origins: 'http://localhost:3000' });
 var roomno = 1;
 
 io.on('connection', (socket) => {
+
   console.log('user connected');
 
   socket.on('msg', function (data) {
+    Conversation.findByIdAndUpdate(data.salonId,
+      {
+        $push: {
+          messages: {
+            auteurId: data.user._id,
+            contenu: data.message,
+            date: new Date().getTime()
+          }
+        }
+      },async (err,conv)=>{
+      if(err){
+        socket.emit('erreur',err) ; 
+
+      }else{
+        console.log(conv.messages)
+      }
+    });
+
     io.sockets.in(data.salonId).emit('newmsg', data);
-  })
+  });
 
   socket.on('conversation', (data)=>{
-    console.log(data)
-    if(data.user1 !== data.user2){
-    try{
-      Conversation.findOne({salon:{$in:[data.user1]} ,salon:{$in:[data.user2]}},async (err,conv)=>{
+
+    if(data.user1._id !== data.user2._id){
+
+      Conversation.findOne({$and:[{salon:{$in:[data.user1._id]} },{salon:{$in:[data.user2._id]}}]},async (err,conv)=>{
+
         if(err){
-          console.log(err);
-          socket.emit('erreur',err) ;    
-        }else if(conv.length == 0){
+
+          socket.emit('erreur',err) ; 
+
+        }else if(conv == null){
+
           const tmp = new Conversation({
             messages:[],
-            salon: [data.user1,data.user2],
+            salon: [data.user1._id,data.user2._id],
             date: new Date().getTime()
           });
-            try {
-              const salon  = await tmp.save();
-              socket.join(salon.id);
-              console.log(salon); 
-              socket.emit('addSalon',salon) ;    
-            } catch (err) {
-              console.log(err);
-              socket.emit('erreur',err) ;    
-            }
+
+          const salon  = await tmp.save();
+          socket.join(salon.id);
+          socket.emit('addSalon',salon) ;    
+
         }else if(conv.length > 1){
+
           socket.emit('erreur',conv) ;    
 
         }else{
-          console.log(conv)
+
           socket.join(conv.id);
           socket.emit('addSalon',conv) ;    
         }
       });
 
-    }catch(err){
-      console.log(err);
-      socket.emit('erreur',err) ;    
     }
-  }
   })
+
+
+
 });
 
 http.listen(port, () => {
   console.log(`Started up http at port ${port}`);
 
 });
-
-// app.listen(port, () => {
-//  console.log(`Started up at port ${port}`);
-
-// });
