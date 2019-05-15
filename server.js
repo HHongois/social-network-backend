@@ -46,18 +46,19 @@ app.use('/users', users);
 const http = require('http').Server(app);
 
 const io = socketio(http, { origins: 'http://localhost:3000' });
-var roomno = 1;
 
 io.on('connection', (socket) => {
 
   console.log('user connected');
 
   socket.on('msg', function (data) {
+    console.log(data.user);
     Conversation.findByIdAndUpdate(data.salonId,
       {
         $push: {
           messages: {
             auteurId: data.user._id,
+            userName: data.user,
             contenu: data.message,
             date: new Date().getTime()
           }
@@ -67,6 +68,7 @@ io.on('connection', (socket) => {
         socket.emit('erreur',err) ; 
 
       }else{
+        
         console.log(conv.messages)
       }
     });

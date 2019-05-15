@@ -7,6 +7,7 @@ const ConversationSchema = new Schema({
         type : [
             {
                auteurId: String,
+               userName: String,
                contenu: String,
                date: Number 
             }
